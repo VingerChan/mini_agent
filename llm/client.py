@@ -40,7 +40,7 @@ class LLMClient:
                 max_tokens=max_tokens,
             )
             content = response.choices[0].message.content or ""
-            logger.info("大模型回复成功: 长度=%d", len(content))
+            logger.info("大模型回复成功: 长度=%d, 内容=%s", len(content), content[:200])
             return content
         except RateLimitError:
             logger.error("请求频率超限")

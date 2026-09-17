@@ -6,6 +6,7 @@ from llm.client import LLMClient
 from agent.agent import Agent
 from tools.registry import registry
 from core.config import settings
+from core.context import ContextManager
 from core.session import SessionManager
 
 logger = logging.getLogger(__name__)
@@ -55,13 +56,15 @@ assistant：你好！有什么我可以帮助你的吗？
 llm_client = LLMClient()
 agent = Agent(system_prompt=SYSTEM_PROMPT, llm_client=llm_client, registry=registry)
 session_manager = SessionManager(redis_url=settings.redis_url)
+context_manager = ContextManager()
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest) -> ChatResponse:
     logger.info("收到聊天请求: session=%s, message=%s", req.session_id, req.message)
     try:
         history = await session_manager.get_history(req.session_id)
-        reply, traces, updated_history = await agent.run(req.message, history)
+        processed_history = await context_manager.process_history(history)
+        reply, traces, updated_history = await agent.run(req.message, processed_history)
         await session_manager.save_history(req.session_id, updated_history)
     except Exception as e:
         logger.exception("调用大模型失败")
